@@ -13,12 +13,12 @@ $EXPECTED_SERVICES= @(
 $EXPECTED_SERVICE_STATUS="Running"
 $are_services_expected_status = $true
 $services_not_expected_status = @()
-foreach($service in $services) 
+foreach($service in $EXPECTED_SERVICES) 
  { 
     $service_info=$(Get-Service -Name "$service")
     $serviceName=$service_info.Name
     $service_info.Refresh()
-    $serviceStatus = $service.Status
+    $serviceStatus = $service_info.Status
     if ( $serviceStatus -ne $EXPECTED_SERVICE_STATUS ){
         $are_services_expected_status = $false
         $services_not_expected_status += "$serviceName"
