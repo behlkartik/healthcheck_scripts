@@ -1,5 +1,5 @@
 # Check Service Status and Restart if not running #
-$services= @(
+$EXPECTED_SERVICES= @(
     "SAVService",
     "Sophos Agent",
     "Sophos AutoUpdate Service",
@@ -8,27 +8,24 @@ $services= @(
     "SAVAdminService",
     "swi_service",
     "swi_filter",
-    "sophossps",
     "Sophos System Protection Service"
     )
-$services=Get-Service -Name "$servicePrefix"
-$serviceNames=$services.Name
-Write-Host "Services discovered $serviceNames"
-$not_running = $false
-$output = @()
+$EXPECTED_SERVICE_STATUS="Running"
+$are_services_expected_status = $true
+$services_not_expected_status = @()
 foreach($service in $services) 
  { 
     $serviceName=$service.Name
     $service.Refresh()
     $serviceStatus = $service.Status
-    if ( $serviceStatus -ne "Running" ){
-        $not_running = $true
-        $output += @{"service": "$serviceName", "status": "$serviceStatus" }
+    if ( $serviceStatus -ne $EXPECTED_SERVICE_STATUS ){
+        $are_services_expected_status = $false
+        $services_not_expected_status += @("$serviceName")
     }
  } 
 
- if ($not_running -eq $true){
-    $result = $(ConvertTo-Json -InputObject @($body))
+ if ($are_services_expected_status -eq $false){
+    $result = "Not $EXPECTED_SERVICE_STATUS services: $($services_not_expected_status -join ',')"
     Write-Host $result
     exit 1
  }

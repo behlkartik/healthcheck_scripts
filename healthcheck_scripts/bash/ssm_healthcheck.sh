@@ -1,18 +1,17 @@
 # service healthcheck script
 #!/usr/bin/env bash
 
-: ' only check service is running or not 
-  if all services related to service prefix are running
+: ' only check service is running/dead/terminated or not 
+  if all expected services are expected status
     return 0
   else
-    prepare error json as {"error": "Description of what failed"} &
+    echo which services are not expected status
     return 1
 '
-# yum install -y jq
 declare -a EXPECTED_SERVICES=("sav-protect.service" "sav-rms.service")
 EXPECTED_SERVICE_STATUS="running"
 OS_UNSUPPORTED=4
-not_running_services=()
+services_not_expected_status=()
 
 function join(){
     local IFS="$1"
@@ -47,8 +46,8 @@ get_service_status(){
   if [[ $distro == "rhel" || $distro == "centos"  ]] && [[ $distro_version == 6* ]] 
   then
     status_info=$(service $1 status | awk 'NR==3')
-    read prefix active running_info <<< $status_info
-    result=$( echo $running_info | sed -e 's/(//g' | sed -e 's/).*//g' )
+    read prefix active expected_info <<< $status_info
+    result=$( echo $expected_info | sed -e 's/(//g' | sed -e 's/).*//g' )
   else
     result=$(systemctl list-units -a --no-legend $1  | awk '{print $4}')
   fi
@@ -57,28 +56,23 @@ get_service_status(){
 }
 
 check_service(){
-    # echo "checking services ${EXPECTED_SERVICES[@]} is state:$EXPECTED_SERVICE_STATUS for distribution:$distro with version:$distro_version"
-    not_running=1
+    are_services_expected_status=0
     for service_name in ${EXPECTED_SERVICES[@]}
     do
-        # echo "checking $service_name is $EXPECTED_SERVICE_STATUS"
         service_status=$(get_service_status $service_name)
-        # echo "service status is $service_status"
         if [[ $service_status != $EXPECTED_SERVICE_STATUS  ]]
         then
-            not_running=0
-            # output=$(echo $output | jq '. += [[{"service": "'"$service_name"'", "status": "'"$service_status"'"}]]')
-            not_running_services+=("$service_name")
+            are_services_expected_status=1
+            services_not_expected_status+=("$service_name")
         fi
     done
 
-    if [[ $not_running -eq 0 ]]
+    if [[ $are_services_expected_status -eq 1 ]]
     then
-        echo "Not $EXPECTED_SERVICE_STATUS services: $( join , ${not_running_services[@]})"
-        exit 1
-    else
-        exit 0
+        echo "Not $EXPECTED_SERVICE_STATUS services: $( join , ${services_not_expected_status[@]})"
     fi
+  
+    exit $are_services_expected_status
 
 }
 
